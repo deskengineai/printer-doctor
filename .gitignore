@@ -1,0 +1,9 @@
+# Unredacted notes, raw printer config, and logs - never publish
+private/
+
+# Generated per machine by the scripts - contain IPs, MACs, hostnames, usernames
+escalation_*.md
+backup_*/
+printer_doctor_state.json
+fix_log.txt
+network summary*.txt

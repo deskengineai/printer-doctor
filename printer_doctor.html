@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Printer Doctor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --paper:#f4f6f8; --sheet:#ffffff; --ink:#15181e; --muted:#5a6272; --rule:#dde1e7;
+  --c:#0096d6; --m:#d6247a; --y:#f0c200; --k:#15181e;
+  --likely:#c8322b; --possible:#b87400; --review:#2a6fb0; --ok:#1f8a4c;
+  --term:#101318; --term-ink:#d7dde6; --term-dim:#7b8594;
+  --display:"Schibsted Grotesk","Segoe UI",system-ui,sans-serif;
+  --body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",Consolas,"Cascadia Mono",monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0f1216; --sheet:#171b21; --ink:#e8ecf1; --muted:#98a1b0; --rule:#2a3039; --k:#e8ecf1;
+    --likely:#f0685f; --possible:#e6a53a; --review:#6aa8e8; --ok:#4cc27d;
+    --term:#0a0c0f; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0f1216; --sheet:#171b21; --ink:#e8ecf1; --muted:#98a1b0; --rule:#2a3039; --k:#e8ecf1;
+  --likely:#f0685f; --possible:#e6a53a; --review:#6aa8e8; --ok:#4cc27d;
+  --term:#0a0c0f; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 16px/1.6 var(--body);padding-inline:20px;padding-block:0 64px}
+.wrap{max-width:920px;margin:0 auto}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+p{margin:0}
+code,kbd{font-family:var(--mono);font-size:.9em}
+
+/* CMYK registration strip - the printer's own test-page bar */
+.bar{display:grid;grid-template-columns:repeat(4,1fr);height:6px;margin-bottom:48px}
+.bar i:nth-child(1){background:var(--c)} .bar i:nth-child(2){background:var(--m)}
+.bar i:nth-child(3){background:var(--y)} .bar i:nth-child(4){background:var(--k)}
+
+header{display:grid;gap:18px;padding-bottom:40px;border-bottom:1px solid var(--rule)}
+.eyebrow{font:500 12px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:10px}
+.reg{width:14px;height:14px;border:1.5px solid var(--ink);border-radius:50%;position:relative}
+.reg::before,.reg::after{content:"";position:absolute;background:var(--ink)}
+.reg::before{left:50%;top:-4px;bottom:-4px;width:1.5px;transform:translateX(-50%)}
+.reg::after{top:50%;left:-4px;right:-4px;height:1.5px;transform:translateY(-50%)}
+h1{font-size:clamp(40px,7vw,64px);font-weight:800;letter-spacing:-.02em}
+.lede{font-size:19px;color:var(--muted);max-width:60ch}
+.cmd{display:flex;flex-wrap:wrap;gap:10px}
+.cmd code{background:var(--sheet);border:1px solid var(--rule);padding:8px 12px;border-radius:6px}
+.cmd code b{color:var(--c);font-weight:500}
+
+section{padding-block:48px;border-bottom:1px solid var(--rule);display:grid;gap:24px}
+section:last-of-type{border-bottom:0}
+.sh{display:grid;gap:6px}
+h2{font-size:28px;font-weight:700;letter-spacing:-.01em}
+.sh p{color:var(--muted);max-width:62ch}
+
+/* Checks */
+.groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:28px 36px}
+.group h3{font:600 13px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding-bottom:10px;border-bottom:2px solid var(--ink);margin-bottom:6px}
+.group ul{list-style:none;margin:0;padding:0}
+.group li{padding:9px 0;border-bottom:1px dashed var(--rule);display:grid;gap:2px}
+.group li:last-child{border-bottom:0}
+.group li span{font-size:14px;color:var(--muted)}
+
+/* Confidence legend */
+.levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.lvl{display:grid;gap:4px;padding-left:14px;border-left:4px solid var(--c)}
+.lvl.l1{border-color:var(--likely)} .lvl.l2{border-color:var(--possible)} .lvl.l3{border-color:var(--review)}
+.lvl b{font-family:var(--display);font-size:17px}
+.lvl span{font-size:14px;color:var(--muted)}
+
+/* Terminal */
+.term{background:var(--term);color:var(--term-ink);border-radius:10px;overflow-x:auto;font:400 13px/1.7 var(--mono);padding:20px 22px}
+.term pre{margin:0;white-space:pre}
+.term .h{color:#fff;font-weight:500}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#56d08a} .term .wa{color:#f2c14e} .term .rv{color:#7fb6f0} .term .cy{color:#4cc3f5}
+.term-cap{font:400 12px/1.4 var(--mono);color:var(--muted)}
+
+/* Actions */
+.actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0 36px}
+.act{display:grid;grid-template-columns:34px 1fr;gap:4px 12px;padding:14px 0;border-bottom:1px solid var(--rule)}
+.act .n{font:500 13px/1.9 var(--mono);color:var(--muted)}
+.act b{font-weight:600}
+.act p{grid-column:2;font-size:14px;color:var(--muted)}
+.tags{grid-column:2;display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.tag{font:500 11px/1 var(--mono);letter-spacing:.04em;padding:4px 7px;border-radius:4px;border:1px solid var(--rule);color:var(--muted)}
+.tag.admin{border-color:var(--m);color:var(--m)}
+.tag.safe{border-color:var(--ok);color:var(--ok)}
+
+/* Guard rails */
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.rule{background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:18px;display:grid;gap:6px;align-content:start}
+.rule .ref{font:500 11px/1 var(--mono);color:var(--c);letter-spacing:.08em}
+.rule b{font-family:var(--display);font-size:17px;line-height:1.3}
+.rule p{font-size:14px;color:var(--muted)}
+
+/* Modes */
+.modes{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.mode{background:var(--sheet);border:1px solid var(--rule);border-top:4px solid var(--ok);border-radius:8px;padding:14px;display:grid;gap:6px;align-content:start}
+.mode.rw{border-top-color:var(--m)} .mode.rb{border-top-color:var(--c)}
+.mode .step{font:500 11px/1 var(--mono);color:var(--muted);letter-spacing:.08em}
+.mode b{font-family:var(--display);font-size:18px}
+.mode code{font-size:13px;color:var(--c)}
+.mode p{font-size:14px;color:var(--muted)}
+.mode .tag{justify-self:start}
+
+/* Two-option comparison */
+.cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.opt{background:var(--sheet);border:1px solid var(--rule);border-left:4px solid var(--ok);border-radius:8px;padding:18px;display:grid;gap:8px;align-content:start}
+.opt.off{border-left-color:var(--possible)}
+.opt .ref{font:500 11px/1 var(--mono);color:var(--c);letter-spacing:.08em}
+.opt b{font-family:var(--display);font-size:17px}
+.opt ul{margin:0;padding-left:18px;display:grid;gap:6px;font-size:14px;color:var(--muted)}
+
+/* Safety list */
+.safety{margin:0;padding-left:20px;display:grid;gap:10px;max-width:72ch}
+.safety b{color:var(--ink)}
+.note{font-size:14px;color:var(--muted)}
+.tag.admin,.tag.safe{white-space:nowrap}
+
+/* Usage */
+.usage{display:grid;gap:0}
+.use{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;padding:12px 0;border-bottom:1px solid var(--rule);align-items:baseline}
+.use code{overflow-wrap:anywhere}
+.use span{color:var(--muted);font-size:15px}
+@media (max-width:560px){.use{grid-template-columns:1fr;gap:2px}}
+
+footer{padding-top:24px;font:400 12px/1.6 var(--mono);color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 18px}
+</style>
+</head>
+<body>
+<div class="bar" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow"><span class="reg" aria-hidden="true"></span>printer_doctor.ps1 · v1 beta · Windows PowerShell 5.1+</div>
+  <h1>Printer Doctor</h1>
+  <p class="lede">One script that finds out why a Windows PC won't print, explains it in plain English, shows exactly what it would change, fixes it only after you approve, and can roll back if anything breaks. Works with any printer brand.</p>
+  <p class="note"><b>Beta.</b> Diagnosis, preview and reports have been run on a real printer. The actions that change settings have only been tested in a harness so far. Run <code>-Preview</code> first; every change is backed up and <code>-Rollback</code> undoes port and SNMP changes.</p>
+  <div class="cmd">
+    <code>.\printer_doctor.ps1</code>
+    <code>.\printer_doctor.ps1 <b>-Preview</b></code>
+    <code>.\printer_doctor.ps1 <b>-Commit</b></code>
+    <code>.\printer_doctor.ps1 <b>-Select</b></code>
+    <code>.\printer_doctor.ps1 <b>-Rollback</b></code>
+    <code>.\printer_doctor.ps1 <b>-Report</b></code>
+    <code>.\printer_doctor.ps1 <b>-Report-Public</b></code>
+  </div>
+</header>
+
+<section>
+  <div class="sh">
+    <h2>What it checks</h2>
+    <p>Diagnosis is read-only and runs without admin rights. It checks 14 things across five areas.</p>
+  </div>
+  <div class="groups">
+    <div class="group">
+      <h3>Spooler &amp; queue</h3>
+      <ul>
+        <li>Print Spooler service<span>Running, stopped, or recently crashed</span></li>
+        <li>Stuck jobs<span>Error states, jobs older than 10 minutes, jobs already sent to the printer</span></li>
+        <li>Offline, paused, unavailable<span>Queue status plus the hidden "Use Printer Offline" flag</span></li>
+      </ul>
+    </div>
+    <div class="group">
+      <h3>Port</h3>
+      <ul>
+        <li>Port type<span>WSD, Standard TCP/IP, IPP, USB, or shared printer</span></li>
+        <li>WSD discovery address<span>Flags a WSD queue bound to a Wi-Fi Direct address</span></li>
+        <li>SNMP status polling<span>Whether it's on, and whether the printer actually answers it</span></li>
+        <li>Static or changing IP<span>Remembers the printer's hardware address and warns when its IP moves</span></li>
+      </ul>
+    </div>
+    <div class="group">
+      <h3>Network</h3>
+      <ul>
+        <li>Hostname resolves to an IP</li>
+        <li>Ping</li>
+        <li>Print ports<span><code>9100</code> raw · <code>631</code> IPP · <code>515</code> LPR · <code>80</code> web page, whichever fit the port</span></li>
+        <li>Wi-Fi / Ethernet in use<span>Current network name, with <code>-ExpectedNetwork</code> to catch the wrong Wi-Fi</span></li>
+        <li>Firewall, VPN, network profile<span>Detects a VPN carrying printer traffic, and Public profiles that block discovery</span></li>
+      </ul>
+    </div>
+    <div class="group">
+      <h3>The printer itself</h3>
+      <ul>
+        <li>Device status over IPP<span>Paper out, jam, door open. Windows can't see these once SNMP is off.</span></li>
+      </ul>
+    </div>
+    <div class="group">
+      <h3>Driver &amp; logs</h3>
+      <ul>
+        <li>Driver present and intact<span>Missing driver files, generic class drivers, driver from the wrong manufacturer</span></li>
+        <li>Recent print errors<span>Error codes, destroyed jobs (824), last confirmed print (307). Harmless driver-store noise is filtered out.</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sh">
+    <h2>What it tells you</h2>
+    <p>Each finding comes with a plain-English diagnosis, a confidence level, one safe next step, and a technical report with the evidence for IT.</p>
+  </div>
+  <div class="levels">
+    <div class="lvl l1"><b>Likely cause</b><span>Direct evidence points here. Fix this first.</span></div>
+    <div class="lvl l2"><b>Possible cause</b><span>Consistent with the symptoms, but not proven.</span></div>
+    <div class="lvl l3"><b>Needs manual review</b><span>Windows can't see this. Someone has to look at the printer or router.</span></div>
+  </div>
+  <div class="term" role="region" aria-label="Sample output" tabindex="0"><pre><span class="cy">  Diagnosing: NPIXXXXXX (HP Color LaserJet MFP M283cdw)</span>
+<span class="d">  2026-09-23 12:31   elevated: False</span>
+
+<span class="h">  DIAGNOSIS</span>
+<span class="rv">  1. [Needs manual review] Windows sees no problem. With SNMP off, Windows cannot
+     see paper-out, jams, or open covers - check the printer's own screen.</span>
+     Next step: Print a test page. If it does not come out, generate the escalation report.
+
+<span class="h">  TECHNICAL REPORT</span>
+<span class="ok">  OK   Spooler      Running (start type Automatic)</span>
+<span class="ok">  OK   Queue        PrinterStatus=Normal  WorkOffline=False  Paused=False</span>
+  INFO Port         IP4_…_192.168.1.50  type=Standard TCP/IP  port=9100  RAW  SNMP Enabled=0
+<span class="ok">  OK   Network      Ping 192.168.1.50: replies</span>
+<span class="ok">  OK   Network      TCP ports: 9100=open  631=open  80=open</span>
+<span class="wa">  WARN PC network   Wi-Fi: 'HomeWiFi 2'  category=Public</span>
+<span class="ok">  OK   Device       IPP/ipp/print: state=idle  reasons=toner-low</span>
+<span class="ok">  OK   Driver       HP ColorLaserJet MFP M282-M285 PCL-6 (V4)  missing files=none</span>
+<span class="ok">  OK   Events       Last confirmed print: 2026-09-21 08:13, 3 pages (event 307)</span></pre></div>
+  <p class="term-cap">Real output from 2026-09-23, trimmed. The printer was healthy, so the only findings are items to review by hand.</p>
+</section>
+
+<section>
+  <div class="sh">
+    <h2>How to fix it: five modes</h2>
+    <p>Work through these in order. Only commit, select and roll back change the PC, and each one shows you what it will do before it does anything.</p>
+  </div>
+  <ol class="modes">
+    <li class="mode ro"><span class="step">1</span><b>Diagnose</b><code>.\printer_doctor.ps1</code><p>Finds the cause. Read-only, no admin needed.</p><span class="tag safe">no changes</span></li>
+    <li class="mode ro"><span class="step">2</span><b>Preview</b><code>-Preview</code><p>Lists every change the fix would make, and what you have to do by hand.</p><span class="tag safe">no changes</span></li>
+    <li class="mode rw"><span class="step">3</span><b>Commit</b><code>-Commit</code><p>Applies the whole plan after one approval. Stops at the first failure and shows before vs after.</p><span class="tag admin">changes PC</span></li>
+    <li class="mode rw"><span class="step">3</span><b>or Select</b><code>-Select</code><p>Applies only the plan steps you type, e.g. <kbd>3</kbd> or <kbd>2,3</kbd>.</p><span class="tag admin">changes PC</span></li>
+    <li class="mode rb"><span class="step">4</span><b>Roll back</b><code>-Rollback</code><p>If anything breaks, puts the port and SNMP setting back and deletes ports the script created.</p><span class="tag admin">undo</span></li>
+  </ol>
+  <div class="term" role="region" aria-label="Sample fix plan" tabindex="0"><pre><span class="h">  FIX PLAN   SNMP: Keep - Windows SNMP settings are not turned off</span>
+<span class="wa">  1. [change] Back up the printer's settings</span>
+       + Save printer, port and registry settings to a backup_&lt;date&gt; folder
+<span class="wa">  2. [change, admin] Move the printer to a Standard TCP/IP port</span>
+<span class="d">       Why: WSD loses track of the printer after sleep or a Wi-Fi change (E1).</span>
+       + Create port IP_192.168.1.50 -&gt; 192.168.1.50:9100 (RAW)
+       + SNMP status monitoring on the new port: ON - the printer answers SNMP
+       + Printer port: 'WSD-…' -&gt; 'IP_192.168.1.50'
+       + Old port 'WSD-…' is kept, so you can switch back
+<span class="wa">  3. [change] Set the printer online</span>
+       + 'Use Printer Offline': on -&gt; off
+<span class="cy">  4. [you] Windows treats 'HomeWiFi' as a Public network…</span>
+       - Set it to Private in Settings &gt; Network &gt; Wi-Fi
+
+<span class="h">  3 change(s) on this PC. Nothing outside this list will be changed.</span></pre></div>
+  <p class="term-cap">Sample <code>-Preview</code> output. <b>[change]</b> steps are done by the script, <b>[you]</b> steps need a person, <b>admin</b> means Run as administrator.</p>
+  <div class="term" role="region" aria-label="Sample commit result" tabindex="0"><pre><span class="h">  RESULT: 3 of 3 change(s) applied</span>
+<span class="d">                     before                       after</span>
+  Queue status       Normal                       Normal
+<span class="ok">  Use offline flag   True                         False</span>
+<span class="ok">  Port               WSD-…                        IP_192.168.1.50</span>
+<span class="ok">  SNMP monitoring    n/a (not TCP/IP)             on</span>
+  Printer on 9100    True                         True
+<span class="d">  Print a test page. Only event 307 ("Pages printed: N") proves it printed.</span></pre></div>
+  <p class="term-cap">After <code>-Commit</code>: what changed is highlighted. A test page is the final proof.</p>
+</section>
+
+<section>
+  <div class="sh">
+    <h2>SNMP: kept unless you say otherwise</h2>
+    <p>Windows uses SNMP to ask the printer whether it is online and whether it has paper. Some people rely on those alerts, and SNMP polling is also a common reason for a false "Offline". The script never makes that choice for you.</p>
+  </div>
+  <div class="cmp">
+    <div class="opt keep"><span class="ref">-Snmp Keep · default</span><b>SNMP stays on</b>
+      <ul>
+        <li>If the printer ignores SNMP, the plan tells you to turn on SNMP read access on the printer's web page and check the community name matches.</li>
+        <li>A new port copies the old port's SNMP setting.</li>
+        <li>Moving from WSD: SNMP is turned on only if the printer answers it. Polling a silent printer is what marks the queue Offline.</li>
+      </ul>
+    </div>
+    <div class="opt off"><span class="ref">-Snmp Off</span><b>Windows stops polling</b>
+      <ul>
+        <li>The plan may turn off SNMP status monitoring on the port in use, then restart the spooler (only if nothing is printing).</li>
+        <li>Trade-off: Windows always shows "Ready" and can no longer report paper-out, jams or open covers. The script's IPP check still can.</li>
+        <li>Shown with the evidence before anything changes.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sh">
+    <h2>Safety built in</h2>
+    <p>These apply to every mode that changes the PC.</p>
+  </div>
+  <ul class="safety">
+    <li><b>Backup first.</b> Before the first change, printer, port and registry settings are saved to <code>backup_&lt;date&gt;\</code>, along with <code>rollback.json</code>, which records the original port, its SNMP setting, and every port the script creates.</li>
+    <li><b>Nothing outside the plan.</b> Commit and Select do only the listed steps, in order.</li>
+    <li><b>Stops on the first failure.</b> A failed step is reported as FAILED, never as a success, and the steps after it do not run.</li>
+    <li><b>Offers rollback when something breaks.</b> If a step fails, or the printer stopped answering on port 9100 after the changes, the script shows the rollback and asks once.</li>
+    <li><b>Guards printing jobs.</b> It will not change the port or restart the spooler while a job is printing. That is what destroyed a 45-page job (E2).</li>
+    <li><b>Deleting jobs is always asked separately</b>, even in Commit, because deleted jobs are gone for good.</li>
+    <li><b>Re-reads before acting.</b> The port and SNMP setting are read at the moment of the change, not from startup, so a port moved earlier in the session or by vendor software is never missed (E10).</li>
+  </ul>
+  <p class="note">Rollback cannot bring back deleted print jobs, and it leaves "Use Printer Offline" switched off.</p>
+</section>
+
+<section>
+  <div class="sh">
+    <h2>Single actions</h2>
+    <p>Run with <code>-Fix</code> for a menu of single actions. The menu also has <kbd>P</kbd> preview, <kbd>C</kbd> commit, <kbd>S</kbd> select and <kbd>R</kbd> roll back. Actions that match the diagnosis are marked "suggested". Nothing runs until you type <kbd>Y</kbd>.</p>
+  </div>
+  <div class="actions">
+    <div class="act"><span class="n">[1]</span><b>Back up printer settings</b><p>Saves the printer, port and print settings as JSON and .reg files, plus <code>rollback.json</code>. Runs automatically before any change.</p><div class="tags"><span class="tag safe">no changes</span></div></div>
+    <div class="act"><span class="n">[2]</span><b>Restart the Print Spooler</b><p>Refuses while any job is printing. Queued jobs survive a restart, but a job that is mid-print is destroyed.</p><div class="tags"><span class="tag admin">admin</span><span class="tag">guarded</span></div></div>
+    <div class="act"><span class="n">[3]</span><b>Clear stuck jobs</b><p>Lists the jobs and always asks, even in Commit. Warns when a job has already reached the printer. Removes leftover job files only if normal deletion fails.</p><div class="tags"><span class="tag admin">admin</span><span class="tag">always asks</span></div></div>
+    <div class="act"><span class="n">[4]</span><b>Set printer online</b><p>Clears "Use Printer Offline" and resumes the queue. Warns if the printer isn't reachable on the network.</p><div class="tags"><span class="tag">backup first</span></div></div>
+    <div class="act"><span class="n">[5]</span><b>Re-test DNS and reachability</b><p>Re-runs the name lookup, ping, port and route checks.</p><div class="tags"><span class="tag safe">no changes</span></div></div>
+    <div class="act"><span class="n">[6]</span><b>Move to a Standard TCP/IP port</b><p>Checks that port 9100 answers, creates <code>IP_&lt;address&gt;</code> with RAW printing, then moves the printer onto it. SNMP follows the rules above. The old port is kept.</p><div class="tags"><span class="tag admin">admin</span><span class="tag">guarded</span><span class="tag">backup first</span></div></div>
+    <div class="act"><span class="n">[7]</span><b>Open port settings</b><p>Opens the printer's Ports tab in Windows.</p><div class="tags"><span class="tag safe">no changes</span></div></div>
+    <div class="act"><span class="n">[8]</span><b>Disable SNMP status monitoring</b><p>Acts on the port in use right now. Shows the evidence and the trade-off first, and tells you if the printer is answering SNMP, in which case you may want to keep it.</p><div class="tags"><span class="tag admin">admin</span><span class="tag">guarded</span><span class="tag">backup first</span></div></div>
+    <div class="act"><span class="n">[9]</span><b>Escalation report</b><p>A Markdown file with the port type, printer IP, ping result, driver, spooler state, error codes and the full diagnosis. Private: includes identifying details.</p><div class="tags"><span class="tag safe">no changes</span></div></div>
+    <div class="act"><span class="n">[10]</span><b>Public report</b><p>The same report with personal details redacted, safe to post in a forum or GitHub issue.</p><div class="tags"><span class="tag safe">no changes</span></div></div>
+  </div>
+</section>
+
+<section>
+  <div class="sh">
+    <h2>Sharing a report</h2>
+    <p><code>-Report</code> is for someone you trust, such as your IT person. <code>-Report-Public</code> is for anywhere public. It also redacts what prints on screen, because terminal output gets pasted as often as files do.</p>
+  </div>
+  <div class="cmp">
+    <div class="opt off"><span class="ref">redacted</span><b>Replaced with placeholders</b>
+      <ul>
+        <li>Document names → <code>&lt;document-1&gt;</code></li>
+        <li>Username, PC name, domain, <code>C:\Users\…</code> paths</li>
+        <li>Printer name, Wi-Fi and network names, VPN and adapter names</li>
+        <li>SNMP community, GUIDs, emails, <code>\\server</code> names</li>
+        <li>IPs → <code>172.16.x.x</code>; MACs → vendor prefix only; raw event text → its meaning</li>
+      </ul>
+    </div>
+    <div class="opt keep"><span class="ref">kept</span><b>What a helper needs</b>
+      <ul>
+        <li>Port type, driver name and version</li>
+        <li>Queue and spooler status</li>
+        <li>Error codes such as <code>0x800706BE</code></li>
+        <li>Windows build, firewall and network-profile state</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sh">
+    <h2>Lessons from past failures</h2>
+    <p>Each rule comes from a real mistake logged in <code>ERRORS.md</code>.</p>
+  </div>
+  <div class="rules">
+    <div class="rule"><span class="ref">E1 · E13</span><b>Offline while reachable is a port problem</b><p>WSD loses the printer after sleep or a Wi-Fi roam. Here it was also bound to the Wi-Fi Direct address. Printer sleep settings are a red herring.</p></div>
+    <div class="rule"><span class="ref">E2</span><b>Never restart the spooler mid-print</b><p>That destroyed a 45-page job (error <code>0x800706BE</code>), and the queue looked empty, as if it had printed.</p></div>
+    <div class="rule"><span class="ref">E2</span><b>An empty queue doesn't mean it printed</b><p>Only event 307, "Pages printed: N", confirms a job actually came out.</p></div>
+    <div class="rule"><span class="ref">E3 · E12</span><b>Toner percentages can be fiction</b><p>Third-party cartridges report estimated levels. Judge toner by the printed page.</p></div>
+    <div class="rule"><span class="ref">E4</span><b>Don't trust the Print Queue window</b><p>After a spooler restart it keeps showing old jobs. Close and reopen it.</p></div>
+    <div class="rule"><span class="ref">E5</span><b>With SNMP off, ask the printer</b><p>Windows shows "Normal" even with an empty paper tray. The IPP status check fills that gap.</p></div>
+    <div class="rule"><span class="ref">E10</span><b>Settings live on the port</b><p>Vendor software can move the printer to a new port with different settings. Re-run the doctor after driver updates.</p></div>
+    <div class="rule"><span class="ref">E11</span><b>Unknown beats a false zero</b><p>Without admin rights, counting spool files silently returns 0. The script reports "unknown" instead.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="sh">
+    <h2>Usage</h2>
+    <p>Changes need PowerShell opened with <b>Run as administrator</b>. If scripts are blocked, run <code>powershell -ExecutionPolicy Bypass -File .\printer_doctor.ps1</code>.</p>
+  </div>
+  <div class="usage">
+    <div class="use"><code>.\printer_doctor.ps1</code><span>Diagnose only. Asks which printer if there are several.</span></div>
+    <div class="use"><code>-PrinterName '&lt;name&gt;'</code><span>Check one specific queue</span></div>
+    <div class="use"><code>-Preview</code><span>Show the fix plan. Changes nothing.</span></div>
+    <div class="use"><code>-Commit</code><span>Apply the whole plan after one approval (<code>-AutoFix</code> also works)</span></div>
+    <div class="use"><code>-Select</code><span>Apply only the plan steps you pick</span></div>
+    <div class="use"><code>-Rollback</code><span>Undo the changes recorded in the latest backup</span></div>
+    <div class="use"><code>-Snmp Keep | Off</code><span>Keep (default) never turns SNMP off. Off lets the plan turn off Windows SNMP polling.</span></div>
+    <div class="use"><code>-Fix</code><span>Menu of single actions, plus P / C / S / R</span></div>
+    <div class="use"><code>-Report</code><span>Write an escalation report (private, full detail)</span></div>
+    <div class="use"><code>-Report-Public</code><span>Redacted report and screen output, safe to post publicly</span></div>
+    <div class="use"><code>-ExpectedNetwork HomeWiFi</code><span>Warn when the PC is on a different Wi-Fi network</span></div>
+    <div class="use"><code>-EventDays 14</code><span>How far back to read the print logs (default 7 days)</span></div>
+    <div class="use"><code>-OutDir &lt;folder&gt;</code><span>Where reports, backups and the IP history go (default: the script's folder)</span></div>
+  </div>
+  <footer>
+    <span>Needs PrinterLib.ps1 in the same folder</span>
+    <span>IPP · SNMP · printer web page probes</span>
+    <span>Read-only unless you approve a change</span>
+    <span>MIT license · provided as is</span>
+  </footer>
+</section>
+
+</div>
+</body>
+</html>
